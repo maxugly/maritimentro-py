@@ -1,0 +1,10 @@
+[project]
+name = "maritimentro-py"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "requests>=2.33.1",
+    "ua-generator>=2.0.24",
+]
