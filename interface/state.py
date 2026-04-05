@@ -29,6 +29,9 @@ class EntropyState:
         self._harvesters: Dict[str, HarvesterStats] = {}
         self._lock = asyncio.Lock()
         self._start_time = time.time()
+        # Non-blocking buffer for the TUI "Matrix Fade"
+        self._bean_pool: List[Dict[str, Any]] = []
+        self._max_beans = 100
 
     @property
     def seed(self) -> int:
@@ -67,6 +70,19 @@ class EntropyState:
                 # If we have a value, update the seed
                 if value is not None:
                     self._seed = mix_with_time(self._seed, value)
+                    # Add to bean pool for TUI visual
+                    self._bean_pool.append({
+                        "name": name,
+                        "value": value,
+                        "ts": time.time()
+                    })
+                    if len(self._bean_pool) > self._max_beans:
+                        self._bean_pool.pop(0)
+
+    async def get_bean_pool(self) -> List[Dict[str, Any]]:
+        """Returns the current pool of entropy 'beans' for visualization."""
+        async with self._lock:
+            return list(self._bean_pool)
 
     async def get_harvester_stats(self) -> List[HarvesterStats]:
         """Returns a list of all harvester statistics."""

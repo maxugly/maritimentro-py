@@ -7,4 +7,7 @@ requires-python = ">=3.14"
 dependencies = [
     "requests>=2.33.1",
     "ua-generator>=2.0.24",
+    "aiohttp>=3.9.0",
+    "aiofiles>=23.2.1",
+    "rich>=13.7.0",
 ]

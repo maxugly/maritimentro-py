@@ -1,27 +1,74 @@
-import concurrent.futures
-from utils.network_helper import get_doggo_stats
+import asyncio
+import time
+import shutil
+import re
+from typing import Dict, Any
+from interface.constants import TIMEOUT_SECONDS
 
-def harvest():
+async def harvest() -> Dict[str, Any]:
+    """
+    Standardized Async Harvester for Parallel DNS Probes.
+    Pristine rule: Direct asyncio.create_subprocess_exec usage.
+    """
     # A mix of global infrastructure and high-traffic sites
     targets = [
         'google.com', 'cloudflare.com', 'wikipedia.org', 
-        'github.com', 'amazon.com', 'netflix.com',
-        '8.8.8.8', '1.1.1.1', '9.9.9.9'
+        'github.com', 'amazon.com', 'netflix.com'
     ]
     
+    path = shutil.which("doggo")
+    if not path:
+        return {"value": 0, "latency": 0, "remote_time": None, "error": "doggo not found"}
+
+    t0 = time.perf_counter()
     total_entropy = 0
-    print(f"    [THREADING] Launching {len(targets)} parallel probes...")
+    
+    try:
+        # Launch parallel probes
+        procs = []
+        for target in targets:
+            proc = await asyncio.create_subprocess_exec(
+                path, target, '--time',
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            procs.append(proc)
+        
+        # Collect all output with timeout protection
+        for proc in procs:
+            try:
+                stdout, stderr = await asyncio.wait_for(
+                    proc.communicate(), 
+                    timeout=TIMEOUT_SECONDS
+                )
+                raw = stdout.decode() + stderr.decode()
+                
+                # Extract TTLs and RTTs for entropy beans
+                # Pattern matching derived from utils.network_helper logic
+                ttls = [int(n) for n in re.findall(r'\s+(\d+)s\s+', raw)]
+                rtts = [int(n) for n in re.findall(r'(\d+)ms', raw)]
+                
+                total_entropy += sum(ttls) + sum(rtts)
+            except asyncio.TimeoutError:
+                try:
+                    proc.kill()
+                    await proc.wait()
+                except:
+                    pass
+                continue
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-        # Fire and forget - the kernel handles the chaos
-        results = list(executor.map(get_doggo_stats, targets))
-
-    for res in results:
-        if res:
-            # Sum of all moving targets from this specific probe
-            round_sum = sum(res['ttls']) + sum(res['rtts'])
-            if round_sum > 0:
-                print(f"    [RAW_BEANS] {res['target']}: TTLs {res['ttls']} | RTTs {res['rtts']}")
-                total_entropy += round_sum
-
-    return total_entropy
+        t1 = time.perf_counter()
+        
+        return {
+            "value": total_entropy,
+            "latency": t1 - t0,
+            "remote_time": None,
+            "error": None
+        }
+    except Exception as e:
+        return {
+            "value": 0,
+            "latency": time.perf_counter() - t0,
+            "remote_time": None,
+            "error": str(e)
+        }
