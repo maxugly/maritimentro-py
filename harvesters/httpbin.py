@@ -23,7 +23,13 @@ async def harvest(session: aiohttp.ClientSession) -> Dict[str, Any]:
                 "value": entropy_value,
                 "latency": latency,
                 "remote_time": response.headers.get("Date"),
-                "error": None
+                "error": None,
+                "metadata": {
+                    "transport": "HTTP (aiohttp)",
+                    "target": "httpbin.org",
+                    "latency_ms": round(latency * 1000, 2),
+                    "response_size": len(text)
+                }
             }
     except Exception as e:
         return {

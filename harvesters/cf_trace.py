@@ -43,7 +43,13 @@ async def harvest() -> Dict[str, Any]:
             "value": entropy_value,
             "latency": latency,
             "remote_time": remote_time,
-            "error": None
+            "error": None,
+            "metadata": {
+                "transport": "Subprocess (curl)",
+                "target": "1.1.1.1/cdn-cgi/trace",
+                "latency_ms": round(latency * 1000, 2),
+                "remote_ts": remote_time
+            }
         }
     except asyncio.TimeoutError:
         return {

@@ -15,9 +15,17 @@ async def harvest() -> Dict[str, Any]:
     val = int((time.perf_counter() - time.time()) * 1000000) % 100000
     t1 = time.perf_counter()
     
+    latency = t1 - t0
+
     return {
         "value": val,
-        "latency": t1 - t0,
+        "latency": latency,
         "remote_time": None,
-        "error": None
+        "error": None,
+        "metadata": {
+            "transport": "Internal",
+            "source": "Monotonic vs Wall Clock",
+            "latency_ms": round(latency * 1000, 4),
+            "drift_raw": val
+        }
     }
